@@ -138,3 +138,19 @@ async def predict(face_input: FaceExpressionInput = Depends()):
         status_code=status.HTTP_200_OK,
         content=face_expression_ouput.model_dump(),
     )
+
+from fastapi.responses import HTMLResponse
+from fastapi import Request
+
+# Add a route to serve the index.html file
+@router.get("/", response_class=HTMLResponse)
+async def serve_index(request: Request):
+    try:
+        with open("static/index.html", "r") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content, status_code=200)
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>404 - Index file not found</h1>",
+            status_code=404
+        )
