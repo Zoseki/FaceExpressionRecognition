@@ -1,7 +1,7 @@
-import { saveHistoryToDB, deleteHistoryItemFromDB, clearAllHistory } from './db.js';
+import { deleteHistoryItem, clearAllHistory } from './api.js';
 import { displayHistoryDetail } from './api.js';
 
-window.detectionHistory = []; // Biến toàn cục để lưu lịch sử
+window.detectionHistory = [];
 
 export function manageHistory() {
   document.getElementById('clearHistoryBtn').addEventListener('click', () => {
@@ -77,7 +77,7 @@ function setupHistoryItemListeners() {
       deleteBtn.addEventListener('click', (event) => {
         event.stopPropagation();
         if (confirm('Bạn có chắc chắn muốn xóa mục này?')) {
-          deleteHistoryItemFromDB(parseInt(timestamp))
+          deleteHistoryItem(parseInt(timestamp))
             .then(() => {
               window.detectionHistory = window.detectionHistory.filter((h) => h.timestamp != timestamp);
               updateHistoryGrid();
@@ -109,16 +109,7 @@ export function addToHistory(result, imageBase64) {
     };
 
     window.detectionHistory.unshift(historyItem);
-
-    saveHistoryToDB(historyItem)
-      .then(() => {
-        console.log('Đã lưu mục lịch sử vào IndexedDB');
-        updateHistoryGrid();
-      })
-      .catch((error) => {
-        console.error('Lỗi khi thêm vào IndexedDB:', error);
-        updateHistoryGrid();
-      });
+    updateHistoryGrid();
   } catch (error) {
     console.error('Lỗi khi thêm vào lịch sử:', error);
   }

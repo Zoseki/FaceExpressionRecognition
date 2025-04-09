@@ -3,22 +3,40 @@ from typing import List
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
+    Request,
     status,
-    Response,
     UploadFile,
     File,
-    Form,
 )
+from fastapi.responses import HTMLResponse
 from starlette.responses import JSONResponse
 from pydantic import BaseModel
-from PIL import Image
-import io
 import numpy as np
+import sqlite3
+import json
 import cv2
+from datetime import datetime
+from ultralytics import YOLO
 
 router = APIRouter(prefix="/face-expression", tags=["Face Expression"])
 
+# Kết nối và khởi tạo SQLite
+def init_db():
+    conn = sqlite3.connect("/code/app/history.db")  # Lưu tệp SQLite trong thư mục app
+    cursor = conn.cursor()
+    # Tạo bảng history nếu chưa tồn tại
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS detection_history (
+            timestamp INTEGER PRIMARY KEY,
+            image TEXT,  -- Lưu ảnh base64
+            expressions TEXT  -- Lưu danh sách biểu cảm dưới dạng JSON
+        )
+    ''')
+    conn.commit()
+    return conn
+
+# Khởi tạo database khi ứng dụng khởi động
+conn = init_db()
 
 class FaceExpressionInput(BaseModel):
     image: UploadFile = File(
@@ -52,70 +70,70 @@ class FaceExpressionOutput(BaseModel):
 async def predict(face_input: FaceExpressionInput = Depends()):
     from keras.models import load_model
     from tensorflow.keras.preprocessing.image import img_to_array
-    import cv2
 
     # Đọc dữ liệu từ UploadFile
     contents = await face_input.image.read()
+
+    # Chuyển thành base64 để lưu vào database
+    image_base64 = base64.b64encode(contents).decode("utf-8")
 
     # Đọc hình ảnh với OpenCV
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    # Chuyển sang grayscale cho việc phát hiện khuôn mặt
+    # Chuyển sang grayscale cho việc phân loại biểu cảm
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Sử dụng face detector (Haar Cascade hoặc DNN)
-    face_cascade = cv2.CascadeClassifier(
-        f"models/HaarcascadeclassifierCascadeClassifier.xml"
-    )
-    classifier = load_model(f"models/fer_model.h5")
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+    yolo_model = YOLO("models/yolo_model.pt")  # Load mô hình YOLO
+    classifier = load_model("models/fer_model.h5")  # Load mô hình phân loại biểu cảm
 
-    results = []
+    # Phát hiện khuôn mặt với YOLO
+    results = yolo_model(img)  # Dự đoán với YOLO
+    faces = []
+    for result in results:
+        for box in result.boxes:
+            # Lấy tọa độ và độ tin cậy từ YOLO
+            x, y, x2, y2 = box.xyxy[0]  # Tọa độ bounding box (x, y, x2, y2)
+            confidence = box.conf.item()  # Độ tin cậy của phát hiện
+            class_id = int(box.cls.item())  # ID lớp (giả sử lớp 0 là "face")
+
+            # Kiểm tra nếu đối tượng phát hiện là khuôn mặt (class_id và confidence phù hợp)
+            if class_id == 0 and confidence > 0.5:  # Điều chỉnh ngưỡng confidence nếu cần
+                x, y, x2, y2 = int(x), int(y), int(x2), int(y2)
+                w = x2 - x
+                h = y2 - y
+                faces.append((x, y, w, h))
+
     face_count = len(faces)
-
-    face_expression_ouput = FaceExpressionOutput(face_count=face_count, expressions=[])
+    face_expression_output = FaceExpressionOutput(face_count=face_count, expressions=[])
 
     # Kiểm tra nếu không có khuôn mặt nào được phát hiện
     if face_count == 0:
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content=face_expression_ouput.model_dump(),
+            content=face_expression_output.model_dump(),
         )
 
     # Xử lý từng khuôn mặt
+    results = []
     for x, y, w, h in faces:
-        # Cắt khuôn mặt
-        face_roi = gray[y : y + h, x : x + w]
+        face_roi = gray[y:y + h, x:x + w]
+        # Kiểm tra xem vùng khuôn mặt có hợp lệ không
+        if face_roi.size == 0:
+            continue
 
-        # Resize thành 48x48 cho mô hình
         face_img = cv2.resize(face_roi, (48, 48))
-
-        # Chuẩn bị cho mô hình
         face_img_array = face_img.reshape((1, 48, 48, 1)).astype(np.float32) / 255.0
-
-        # Dự đoán
         prediction = classifier.predict(face_img_array)
-
-        # Xác định nhãn và độ tin cậy
         emotions = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
         emotion_index = np.argmax(prediction[0])
         label = emotions[emotion_index]
         confidence = float(prediction[0][emotion_index])
 
-        if confidence < 0.4:
-            print(f"Confidence too low: {confidence}")
+        if confidence < 0.4 or w < 120 or h < 120:
             continue
 
-        # Loại bỏ nếu bounding box nhỏ hơn 150x150
-        if w < 120 or h < 120:
-            print(f"Bounding box too small: {w}x{h}")
-            continue
-
-        # Tạo bounding box trên ảnh gốc
         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Thêm kết quả vào danh sách
         results.append(
             Expression(
                 expression=label,
@@ -123,26 +141,56 @@ async def predict(face_input: FaceExpressionInput = Depends()):
                 bounding_box=BoundingBox(x=x, y=y, width=w, height=h),
             )
         )
-    face_expression_ouput.face_count = len(results)
-    face_expression_ouput.expressions = results
 
-    # Tùy chọn: Chuyển ảnh đã đánh dấu thành base64 để hiển thị
-    # _, img_encoded = cv2.imencode(".jpg", img)
-    # img_base64 = base64.b64encode(img_encoded).decode("utf-8")
+    face_expression_output.face_count = len(results)
+    face_expression_output.expressions = results
 
-    # return {
-    #     "message": f"Phát hiện {len(faces)} khuôn mặt",
-    # }
+    # Lưu vào SQLite
+    if results:
+        timestamp = int(datetime.now().timestamp() * 1000)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO detection_history (timestamp, image, expressions) VALUES (?, ?, ?)",
+            (timestamp, image_base64, json.dumps([r.dict() for r in results]))
+        )
+        conn.commit()
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=face_expression_ouput.model_dump(),
+        content=face_expression_output.model_dump(),
     )
+# Endpoint lấy toàn bộ lịch sử
+@router.get("/history")
+async def get_history():
+    cursor = conn.cursor()
+    cursor.execute("SELECT timestamp, image, expressions FROM detection_history ORDER BY timestamp DESC")
+    rows = cursor.fetchall()
+    history = []
+    for row in rows:
+        history.append({
+            "timestamp": row[0],
+            "image": row[1],
+            "expressions": json.loads(row[2])
+        })
+    return history
 
-from fastapi.responses import HTMLResponse
-from fastapi import Request
+# Endpoint xóa một mục lịch sử
+@router.delete("/history/{timestamp}")
+async def delete_history_item(timestamp: int):
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM detection_history WHERE timestamp = ?", (timestamp,))
+    conn.commit()
+    return {"message": f"Đã xóa mục lịch sử với timestamp {timestamp}"}
 
-# Add a route to serve the index.html file
+# Endpoint xóa toàn bộ lịch sử
+@router.delete("/history")
+async def clear_history():
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM detection_history")
+    conn.commit()
+    return {"message": "Đã xóa toàn bộ lịch sử"}
+
+# Phục vụ index.html
 @router.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
     try:

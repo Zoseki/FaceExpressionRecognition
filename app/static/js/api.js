@@ -1,5 +1,6 @@
 import { addToHistory } from './history.js';
 
+// Gửi yêu cầu dự đoán biểu cảm
 export async function analyzeImage(imageBase64, source) {
   try {
     const blob = await (await fetch(`data:image/jpeg;base64,${imageBase64}`)).blob();
@@ -19,6 +20,47 @@ export async function analyzeImage(imageBase64, source) {
     console.log(`Assigned ${source} image to result, base64 length:`, result.image.length);
     return result;
   } catch (error) {
+    throw error;
+  }
+}
+
+// Lấy toàn bộ lịch sử từ API
+export async function loadHistoryFromAPI() {
+  try {
+    const response = await fetch('http://localhost:9009/face-expression/history');
+    if (!response.ok) throw new Error('Không thể tải lịch sử');
+    const history = await response.json();
+    return history;
+  } catch (error) {
+    console.error('Lỗi khi tải lịch sử:', error);
+    return [];
+  }
+}
+
+// Xóa một mục lịch sử
+export async function deleteHistoryItem(timestamp) {
+  try {
+    const response = await fetch(`http://localhost:9009/face-expression/history/${timestamp}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Không thể xóa mục lịch sử');
+    return true;
+  } catch (error) {
+    console.error('Lỗi khi xóa mục lịch sử:', error);
+    throw error;
+  }
+}
+
+// Xóa toàn bộ lịch sử
+export async function clearAllHistory() {
+  try {
+    const response = await fetch('http://localhost:9009/face-expression/history', {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Không thể xóa toàn bộ lịch sử');
+    return true;
+  } catch (error) {
+    console.error('Lỗi khi xóa toàn bộ lịch sử:', error);
     throw error;
   }
 }
@@ -159,6 +201,7 @@ export function displayResult(result, skipHistory = false) {
   }
 }
 
+// Các hàm khác (displayHistoryDetail, cropFaceImage, createFaceCard, showNotification) giữ nguyên
 export async function displayHistoryDetail(historyItem) {
   console.log('Hiển thị chi tiết lịch sử:', historyItem);
 
@@ -392,6 +435,7 @@ function cropFaceImage(base64Image, boundingBox, faceIndex) {
         y = Math.round(boundingBox.y);
         width = Math.round(boundingBox.width);
         height = Math.round(boundingBox.height);
+        console.log(`Face #${faceIndex + 1}: Sử dụng bounding box (${x},${y},${width},${height})`);
       } else {
         width = Math.round(img.width * 0.6);
         height = Math.round(img.height * 0.6);
@@ -417,7 +461,7 @@ function cropFaceImage(base64Image, boundingBox, faceIndex) {
       try {
         ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
         const croppedImage = canvas.toDataURL('image/jpeg').split(',')[1];
-        // console.log(`Face #${faceIndex + 1}: Đã cắt ảnh thành công, độ dài base64: ${croppedImage.length}`);
+        console.log(`Face #${faceIndex + 1}: Đã cắt ảnh thành công, độ dài base64: ${croppedImage.length}`);
         resolve(croppedImage);
       } catch (e) {
         console.error(`Face #${faceIndex + 1}: Lỗi khi cắt ảnh:`, e);
