@@ -161,7 +161,7 @@ from keras.optimizers import RMSprop, SGD, Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 checkpoint = ModelCheckpoint(
-    "./model.h5", monitor="val_acc", verbose=1, save_best_only=True, mode="max"
+    "./fer_model.h5", monitor="val_acc", verbose=1, save_best_only=True, mode="max"
 )
 
 early_stopping = EarlyStopping(

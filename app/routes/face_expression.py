@@ -15,7 +15,7 @@ import numpy as np
 import sqlite3
 import json
 import cv2
-from datetime import datetime
+from datetime import datetime, timedelta
 from ultralytics import YOLO
 
 router = APIRouter(prefix="/face-expression", tags=["Face Expression"])
@@ -189,6 +189,65 @@ async def clear_history():
     cursor.execute("DELETE FROM detection_history")
     conn.commit()
     return {"message": "Đã xóa toàn bộ lịch sử"}
+
+# Endpoint lấy thống kê cảm xúc
+@router.get("/statistics")
+async def get_statistics(period: str = "week"):
+    """
+    Lấy dữ liệu thống kê cảm xúc theo khoảng thời gian.
+    - period: "week" (tuần), "month" (tháng), "year" (năm), hoặc "all" (tất cả).
+    """
+    cursor = conn.cursor()
+
+    # Xác định khoảng thời gian
+    now = datetime.now()
+    if period == "week":
+        start_time = int((now - timedelta(days=7)).timestamp() * 1000)
+    elif period == "month":
+        start_time = int((now - timedelta(days=30)).timestamp() * 1000)
+    elif period == "year":
+        start_time = int((now - timedelta(days=365)).timestamp() * 1000)
+    else:  # "all"
+        start_time = 0
+
+    # Lấy dữ liệu từ database
+    cursor.execute(
+        "SELECT expressions FROM detection_history WHERE timestamp >= ? ORDER BY timestamp DESC",
+        (start_time,)
+    )
+    rows = cursor.fetchall()
+
+    # Tính toán thống kê cảm xúc
+    emotions_count = {
+        "Angry": 0,
+        "Disgust": 0,
+        "Fear": 0,
+        "Happy": 0,
+        "Neutral": 0,
+        "Sad": 0,
+        "Surprise": 0
+    }
+
+    total_faces = 0
+    for row in rows:
+        expressions = json.loads(row[0])
+        for expr in expressions:
+            emotion = expr["expression"]
+            if emotion in emotions_count:
+                emotions_count[emotion] += 1
+                total_faces += 1
+
+    # Tính phần trăm
+    emotions_percentage = {}
+    for emotion, count in emotions_count.items():
+        emotions_percentage[emotion] = round((count / total_faces * 100) if total_faces > 0 else 0, 2)
+
+    return {
+        "total_faces": total_faces,
+        "emotions_count": emotions_count,
+        "emotions_percentage": emotions_percentage,
+        "period": period
+    }
 
 # Phục vụ index.html
 @router.get("/", response_class=HTMLResponse)
