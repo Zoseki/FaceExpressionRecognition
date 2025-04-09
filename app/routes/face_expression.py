@@ -3,6 +3,7 @@ from typing import List
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
     Request,
     status,
     UploadFile,
@@ -16,6 +17,8 @@ import sqlite3
 import json
 import cv2
 from datetime import datetime, timedelta
+from keras.models import load_model
+from tensorflow.keras.preprocessing.image import img_to_array
 from ultralytics import YOLO
 
 router = APIRouter(prefix="/face-expression", tags=["Face Expression"])
@@ -37,6 +40,10 @@ def init_db():
 
 # Khởi tạo database khi ứng dụng khởi động
 conn = init_db()
+
+# Load mô hình một lần khi khởi động
+yolo_model = YOLO("models/yolo_model.pt")
+classifier = load_model("models/fer_model.h5")
 
 class FaceExpressionInput(BaseModel):
     image: UploadFile = File(
@@ -68,9 +75,6 @@ class FaceExpressionOutput(BaseModel):
 
 @router.post("/predict", response_model=FaceExpressionOutput)
 async def predict(face_input: FaceExpressionInput = Depends()):
-    from keras.models import load_model
-    from tensorflow.keras.preprocessing.image import img_to_array
-
     # Đọc dữ liệu từ UploadFile
     contents = await face_input.image.read()
 
@@ -159,6 +163,7 @@ async def predict(face_input: FaceExpressionInput = Depends()):
         status_code=status.HTTP_200_OK,
         content=face_expression_output.model_dump(),
     )
+
 # Endpoint lấy toàn bộ lịch sử
 @router.get("/history")
 async def get_history():
@@ -192,28 +197,38 @@ async def clear_history():
 
 # Endpoint lấy thống kê cảm xúc
 @router.get("/statistics")
-async def get_statistics(period: str = "week"):
+async def get_statistics(period: str = "week", start_date: str = None, end_date: str = None):
     """
     Lấy dữ liệu thống kê cảm xúc theo khoảng thời gian.
-    - period: "week" (tuần), "month" (tháng), "year" (năm), hoặc "all" (tất cả).
+    - period: "week" (tuần), "month" (tháng), "year" (năm), "all" (tất cả), hoặc "custom" (tùy chỉnh).
+    - start_date: Ngày bắt đầu (định dạng YYYY-MM-DD, chỉ áp dụng khi period=custom).
+    - end_date: Ngày kết thúc (định dạng YYYY-MM-DD, chỉ áp dụng khi period=custom).
     """
     cursor = conn.cursor()
 
     # Xác định khoảng thời gian
     now = datetime.now()
-    if period == "week":
-        start_time = int((now - timedelta(days=7)).timestamp() * 1000)
-    elif period == "month":
-        start_time = int((now - timedelta(days=30)).timestamp() * 1000)
-    elif period == "year":
-        start_time = int((now - timedelta(days=365)).timestamp() * 1000)
-    else:  # "all"
-        start_time = 0
+    if period == "custom" and start_date and end_date:
+        try:
+            start_time = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp() * 1000)
+            end_time = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp() * 1000) + 86399999  # Cuối ngày
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Định dạng ngày không hợp lệ. Sử dụng YYYY-MM-DD.")
+    else:
+        if period == "week":
+            start_time = int((now - timedelta(days=7)).timestamp() * 1000)
+        elif period == "month":
+            start_time = int((now - timedelta(days=30)).timestamp() * 1000)
+        elif period == "year":
+            start_time = int((now - timedelta(days=365)).timestamp() * 1000)
+        else:  # "all"
+            start_time = 0
+        end_time = int(now.timestamp() * 1000)
 
     # Lấy dữ liệu từ database
     cursor.execute(
-        "SELECT expressions FROM detection_history WHERE timestamp >= ? ORDER BY timestamp DESC",
-        (start_time,)
+        "SELECT expressions FROM detection_history WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC",
+        (start_time, end_time)
     )
     rows = cursor.fetchall()
 
@@ -246,9 +261,10 @@ async def get_statistics(period: str = "week"):
         "total_faces": total_faces,
         "emotions_count": emotions_count,
         "emotions_percentage": emotions_percentage,
-        "period": period
+        "period": period,
+        "start_date": start_date,
+        "end_date": end_date
     }
-
 # Phục vụ index.html
 @router.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):

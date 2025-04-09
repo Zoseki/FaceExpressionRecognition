@@ -1,18 +1,23 @@
 import { showNotification } from "./utils.js";
-// import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.3/+esm";
 
 let emotionsChart = null;
-let pieChart = null; // Biến để lưu biểu đồ tròn
+let pieChart = null;
 
 // Hàm cập nhật giao diện thống kê
 export function updateStatistics(data) {
   const statisticsSummary = document.getElementById("statisticsSummary");
   const ctx = document.getElementById("emotionsChart").getContext("2d");
-  const { total_faces, emotions_count, emotions_percentage } = data;
+  const { total_faces, emotions_count, emotions_percentage, period, start_date, end_date } = data;
 
   // Hiển thị tóm tắt với biểu đồ tròn
+  let dateRangeText = '';
+  if (period === "custom" && start_date && end_date) {
+    dateRangeText = `<p class="text-sm text-gray-500 mb-2">Từ ${start_date} đến ${end_date}</p>`;
+  }
+
   statisticsSummary.innerHTML = `
     <p class="text-lg font-semibold mb-2">Tổng số khuôn mặt: ${total_faces}</p>
+    ${dateRangeText}
     <canvas id="emotionsPieChart" class="max-w-full"></canvas>
   `;
 
@@ -25,7 +30,7 @@ export function updateStatistics(data) {
   }
 
   // Vẽ biểu đồ tròn
-  pieChart = new Chart(pieCtx, {
+  pieChart = new window.Chart(pieCtx, {
     type: 'pie',
     data: {
       labels: Object.keys(emotions_percentage),
@@ -76,13 +81,13 @@ export function updateStatistics(data) {
     }
   });
 
-  // Hủy biểu đồ cũ nếu có
+  // Hủy biểu đồ cột cũ nếu có
   if (emotionsChart) {
     emotionsChart.destroy();
   }
 
-  // Vẽ biểu đồ mới
-  emotionsChart = new Chart(ctx, {
+  // Vẽ biểu đồ cột
+  emotionsChart = new window.Chart(ctx, {
     type: "bar",
     data: {
       labels: Object.keys(emotions_count),
@@ -148,15 +153,54 @@ export function updateStatistics(data) {
 
 export function displayStatistics() {
   const periodFilter = document.getElementById("periodFilter");
+  const customDateFilter = document.getElementById("customDateFilter");
+  const startDateInput = document.getElementById("startDate");
+  const endDateInput = document.getElementById("endDate");
   const refreshButton = document.getElementById("refreshStatistics");
+
+  // Hiển thị/ẩn bộ lọc tùy chỉnh khi chọn "Tùy chỉnh"
+  periodFilter.addEventListener("change", () => {
+    if (periodFilter.value === "custom") {
+      customDateFilter.classList.remove("hidden");
+      fetchStatistics(); // Làm mới dữ liệu ngay khi chọn "Tùy chỉnh"
+    } else {
+      customDateFilter.classList.add("hidden");
+      fetchStatistics(); // Làm mới dữ liệu ngay khi thay đổi bộ lọc
+    }
+  });
 
   // Hàm lấy và hiển thị dữ liệu thống kê
   async function fetchStatistics() {
+    let url = "/face-expression/statistics";
     const period = periodFilter.value;
+
+    // Nếu là bộ lọc tùy chỉnh, thêm start_date và end_date
+    if (period === "custom") {
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+
+      if (!startDate || !endDate) {
+        showNotification("Vui lòng chọn cả ngày bắt đầu và ngày kết thúc", "error");
+        return;
+      }
+
+      // Kiểm tra ngày hợp lệ
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start > end) {
+        showNotification("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc", "error");
+        return;
+      }
+
+      url += `?period=custom&start_date=${startDate}&end_date=${endDate}`;
+    } else {
+      url += `?period=${period}`;
+    }
+
     refreshButton.disabled = true;
     refreshButton.innerHTML = 'Đang tải...';
     try {
-      const response = await fetch(`/face-expression/statistics?period=${period}`);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Không thể lấy dữ liệu thống kê');
       }
@@ -171,7 +215,10 @@ export function displayStatistics() {
     }
   }
 
-  // Làm mới dữ liệu khi thay đổi bộ lọc hoặc nhấn nút "Làm mới"
-  periodFilter.addEventListener("change", fetchStatistics);
+  // Làm mới dữ liệu khi nhấn nút "Làm mới"
   refreshButton.addEventListener("click", fetchStatistics);
+
+  // Tự động làm mới dữ liệu khi thay đổi ngày
+  startDateInput.addEventListener("change", fetchStatistics);
+  endDateInput.addEventListener("change", fetchStatistics);
 }

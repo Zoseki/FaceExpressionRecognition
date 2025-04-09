@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nhận Diện Biểu Cảm Khuôn Mặt</title>
-    <!-- Thêm Tailwind CSS qua CDN -->  
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Liên kết tới styles.css -->
     <link rel="stylesheet" href="/static/css/styles.css" />
   </head>
   
@@ -16,11 +14,8 @@
         Nhận Diện Biểu Cảm Khuôn Mặt
       </h1>
 
-      <!-- Layout hai cột cho desktop, một cột cho mobile -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <!-- Cột bên trái - Tab và Webcam/Upload (8/12 cột trên desktop) -->
         <div class="lg:col-span-8 order-1">
-          <!-- Tab Navigation -->
           <div class="flex mb-1 border-b">
             <button class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300 mr-2 bg-white font-bold active" data-tab="upload">
               Tải lên hình ảnh
@@ -33,9 +28,7 @@
             </button>
           </div>
 
-          <!-- Tab Content Wrapper -->
           <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-            <!-- Upload Tab Content -->
             <div class="tab-content active" id="upload-tab">
               <h2 class="text-xl font-semibold mb-4">Tải lên hình ảnh</h2>
               <div class="mb-4">
@@ -48,7 +41,6 @@
               <div id="uploadError" class="text-red-500 mt-3 hidden"></div>
             </div>
 
-            <!-- Webcam Tab Content -->
             <div class="tab-content hidden" id="webcam-tab">
               <h2 class="text-xl font-semibold mb-4">Sử dụng Webcam</h2>
               <div class="mb-4">
@@ -72,7 +64,6 @@
               <div id="webcamError" class="text-red-500 mt-3 hidden"></div>
             </div>
 
-            <!-- Paste Tab Content -->
             <div class="tab-content hidden" id="paste-tab">
               <h2 class="text-xl font-semibold mb-4">Dán ảnh</h2>
               <div class="mb-4">
@@ -92,11 +83,9 @@
             </div>
           </div>
 
-          <!-- Phần kết quả -->
           <div id="resultContainer" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden"></div>
         </div>
 
-        <!-- Cột bên phải - Lịch sử -->
         <div class="lg:col-span-4 order-2">
           <div id="historyContainer" class="bg-white p-4 rounded-lg shadow-md mb-6 lg:top-4">
             <div class="flex justify-between items-center mb-4">
@@ -109,32 +98,52 @@
           </div>
 
           <!-- Statistics Container -->
-        <div id="statisticContainer" class="bg-white p-4 rounded-lg shadow-md mb-6 lg:sticky lg:top-4">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Thống kê cảm xúc</h2>
-            <button id="refreshStatistics" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition">
-              Làm mới
-            </button>
-          </div>
-          <div class="mb-4">
-            <label for="periodFilter" class="mr-2">Lọc theo:</label>
-            <select id="periodFilter" class="p-2 border rounded">
-              <option value="all">Tất cả</option>
-              <option value="week">Tuần</option>
-              <option value="month">Tháng</option>
-              <option value="year">Năm</option>
-            </select>
-          </div>
-          <div id="statisticsContainer">
-            <canvas id="emotionsChart" class="max-w-full"></canvas>
-            <div id="statisticsSummary" class="mt-4"></div>
+          <div id="statisticContainer" class="bg-white p-4 rounded-lg shadow-md mb-6 lg:sticky lg:top-4">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-semibold">Thống kê cảm xúc</h2>
+              <button id="refreshStatistics" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition">
+                Làm mới
+              </button>
+            </div>
+            <div class="mb-4">
+              <label for="periodFilter" class="mr-2">Lọc theo:</label>
+              <select id="periodFilter" class="p-2 border rounded">
+                <option value="all">Tất cả</option>
+                <option value="week">Tuần</option>
+                <option value="month">Tháng</option>
+                <option value="year">Năm</option>
+                <option value="custom">Tùy chỉnh</option>
+              </select>
+            </div>
+            <!-- Bộ lọc Từ ngày - Tới ngày (ẩn mặc định) -->
+            <div id="customDateFilter" class="mb-4 hidden">
+              <label for="startDate" class="mr-2">Từ ngày:</label>
+              <input type="date" id="startDate" class="p-2 border rounded mr-2" />
+              <br>
+              <label for="endDate" class="mr-2">Tới ngày:</label>
+              <input type="date" id="endDate" class="p-2 border rounded" />
+            </div>
+            <div id="statisticsContainer">
+              <canvas id="emotionsChart" class="max-w-full"></canvas>
+              <div id="statisticsSummary" class="mt-4"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Liên kết tới main.js -->
     <script type="module" src="/static/js/main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Đặt giá trị mặc định cho startDate và endDate -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const today = new Date();
+        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDateInput.value = sevenDaysAgo.toISOString().split('T')[0];
+        endDateInput.value = today.toISOString().split('T')[0];
+      });
+    </script>
   </body>
 </html>
