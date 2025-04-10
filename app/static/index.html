@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/css/styles.css" />
   </head>
-  
+
   <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-4">
       <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
@@ -15,15 +15,24 @@
       </h1>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-8 order-1">
+        <div class="lg:col-span-4 order-1">
           <div class="flex mb-1 border-b">
-            <button class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300 mr-2 bg-white font-bold active" data-tab="upload">
+            <button
+              class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300 mr-2 bg-white font-bold active"
+              data-tab="upload"
+            >
               Tải lên hình ảnh
             </button>
-            <button class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300 mr-2" data-tab="webcam">
+            <button
+              class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300 mr-2"
+              data-tab="webcam"
+            >
               Sử dụng Webcam
             </button>
-            <button class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300" data-tab="paste">
+            <button
+              class="tab py-2 px-4 rounded-t-lg bg-gray-200 hover:bg-gray-300"
+              data-tab="paste"
+            >
               Dán ảnh
             </button>
           </div>
@@ -32,12 +41,23 @@
             <div class="tab-content active" id="upload-tab">
               <h2 class="text-xl font-semibold mb-4">Tải lên hình ảnh</h2>
               <div class="mb-4">
-                <input type="file" id="imageUpload" accept="image/*" class="mb-3 block w-full" />
-                <button type="button" id="submitBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition">
+                <input
+                  type="file"
+                  id="imageUpload"
+                  accept="image/*"
+                  class="mb-3 block w-full"
+                />
+                <button
+                  type="button"
+                  id="submitBtn"
+                  class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+                >
                   Phân tích
                 </button>
               </div>
-              <div id="uploadLoading" class="text-center py-3 hidden">Đang xử lý...</div>
+              <div id="uploadLoading" class="text-center py-3 hidden">
+                Đang xử lý...
+              </div>
               <div id="uploadError" class="text-red-500 mt-3 hidden"></div>
             </div>
 
@@ -45,22 +65,40 @@
               <h2 class="text-xl font-semibold mb-4">Sử dụng Webcam</h2>
               <div class="mb-4">
                 <div class="flex flex-wrap gap-2">
-                  <button id="startWebcam" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                  <button
+                    id="startWebcam"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
                     Bật Webcam
                   </button>
-                  <button id="stopWebcam" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition hidden">
+                  <button
+                    id="stopWebcam"
+                    class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition hidden"
+                  >
                     Tắt Webcam
                   </button>
-                  <button id="captureBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition hidden">
+                  <button
+                    id="captureBtn"
+                    class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition hidden"
+                  >
                     Chụp ảnh
                   </button>
                 </div>
               </div>
               <div class="relative webcam-container">
-                <video id="video" class="max-w-full h-auto mx-auto hidden border border-gray-300 rounded-lg" autoplay></video>
-                <canvas id="captureCanvas" class="absolute top-0 left-0 pointer-events-none hidden"></canvas>
+                <video
+                  id="video"
+                  class="max-w-full h-auto mx-auto hidden border border-gray-300 rounded-lg"
+                  autoplay
+                ></video>
+                <canvas
+                  id="captureCanvas"
+                  class="absolute top-0 left-0 pointer-events-none hidden"
+                ></canvas>
               </div>
-              <div id="webcamLoading" class="text-center py-3 hidden">Đang xử lý...</div>
+              <div id="webcamLoading" class="text-center py-3 hidden">
+                Đang xử lý...
+              </div>
               <div id="webcamError" class="text-red-500 mt-3 hidden"></div>
             </div>
 
@@ -68,40 +106,73 @@
               <h2 class="text-xl font-semibold mb-4">Dán ảnh</h2>
               <div class="mb-4">
                 <p class="text-gray-600 mb-2">
-                  Nhấn <strong>Ctrl+V</strong> hoặc nhấp chuột phải và chọn "Dán" để dán ảnh từ clipboard.
+                  Nhấn <strong>Ctrl+V</strong> hoặc nhấp chuột phải và chọn
+                  "Dán" để dán ảnh từ clipboard.
                 </p>
-                <div id="pasteArea" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50 hover:bg-gray-100 transition">
+                <div
+                  id="pasteArea"
+                  class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50 hover:bg-gray-100 transition"
+                >
                   <p class="text-gray-500">Dán ảnh vào đây</p>
-                  <img id="pastedImagePreview" class="max-w-full h-auto mx-auto mt-4 hidden" alt="Pasted image preview" />
+                  <img
+                    id="pastedImagePreview"
+                    class="max-w-full h-auto mx-auto mt-4 hidden"
+                    alt="Pasted image preview"
+                  />
                 </div>
-                <button id="pasteSubmitBtn" class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition hidden">
+                <button
+                  id="pasteSubmitBtn"
+                  class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition hidden"
+                >
                   Phân tích
                 </button>
               </div>
-              <div id="pasteLoading" class="text-center py-3 hidden">Đang xử lý...</div>
+              <div id="pasteLoading" class="text-center py-3 hidden">
+                Đang xử lý...
+              </div>
               <div id="pasteError" class="text-red-500 mt-3 hidden"></div>
             </div>
           </div>
 
-          <div id="resultContainer" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden"></div>
+          <div
+            id="resultContainer"
+            class="bg-white p-6 rounded-lg shadow-md mb-6 hidden"
+          ></div>
         </div>
 
         <div class="lg:col-span-4 order-2">
-          <div id="historyContainer" class="bg-white p-4 rounded-lg shadow-md mb-6 lg:top-4">
+          <div
+            id="historyContainer"
+            class="bg-white p-4 rounded-lg shadow-md mb-6 lg:top-4"
+          >
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-xl font-semibold">Lịch sử phát hiện</h2>
-              <button id="clearHistoryBtn" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
+              <button
+                id="clearHistoryBtn"
+                class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
                 Xóa lịch sử
               </button>
             </div>
-            <div id="historyGrid" class="divide-y divide-gray-200 overflow-y-auto max-h-[calc(100vh-150px)]"></div>
+            <div
+              id="historyGrid"
+              class="divide-y divide-gray-200 overflow-y-auto max-h-[calc(100vh-150px)]"
+            ></div>
           </div>
+        </div>
 
+        <div class="lg:col-span-4 order-2">
           <!-- Statistics Container -->
-          <div id="statisticContainer" class="bg-white p-4 rounded-lg shadow-md mb-6 lg:sticky lg:top-4">
+          <div
+            id="statisticContainer"
+            class="bg-white p-4 rounded-lg shadow-md mb-6 lg:sticky lg:top-4"
+          >
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-xl font-semibold">Thống kê cảm xúc</h2>
-              <button id="refreshStatistics" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition">
+              <button
+                id="refreshStatistics"
+                class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+              >
                 Làm mới
               </button>
             </div>
@@ -115,13 +186,29 @@
                 <option value="custom">Tùy chỉnh</option>
               </select>
             </div>
+
             <!-- Bộ lọc Từ ngày - Tới ngày (ẩn mặc định) -->
             <div id="customDateFilter" class="mb-4 hidden">
-              <label for="startDate" class="mr-2">Từ ngày:</label>
-              <input type="date" id="startDate" class="p-2 border rounded mr-2" />
-              <br>
-              <label for="endDate" class="mr-2">Tới ngày:</label>
-              <input type="date" id="endDate" class="p-2 border rounded" />
+              <div class="flex items-center gap-2 mb-2">
+                <label for="startDate" class="w-24 text-gray-700"
+                  >Từ ngày:</label
+                >
+                <input
+                  type="date"
+                  id="startDate"
+                  class="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <label for="endDate" class="w-24 text-gray-700"
+                  >Tới ngày:</label
+                >
+                <input
+                  type="date"
+                  id="endDate"
+                  class="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             <div id="statisticsContainer">
               <canvas id="emotionsChart" class="max-w-full"></canvas>
@@ -136,13 +223,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Đặt giá trị mặc định cho startDate và endDate -->
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
+      document.addEventListener("DOMContentLoaded", () => {
+        const startDateInput = document.getElementById("startDate");
+        const endDateInput = document.getElementById("endDate");
         const today = new Date();
-        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        startDateInput.value = sevenDaysAgo.toISOString().split('T')[0];
-        endDateInput.value = today.toISOString().split('T')[0];
+        const sevenDaysAgo = new Date(
+          today.getTime() - 7 * 24 * 60 * 60 * 1000
+        );
+        startDateInput.value = sevenDaysAgo.toISOString().split("T")[0];
+        endDateInput.value = today.toISOString().split("T")[0];
       });
     </script>
   </body>

@@ -1,4 +1,5 @@
 import { showNotification } from "./utils.js";
+import { refreshHistory } from "./history.js";
 
 let emotionsChart = null;
 let pieChart = null;
@@ -7,10 +8,17 @@ let pieChart = null;
 export function updateStatistics(data) {
   const statisticsSummary = document.getElementById("statisticsSummary");
   const ctx = document.getElementById("emotionsChart").getContext("2d");
-  const { total_faces, emotions_count, emotions_percentage, period, start_date, end_date } = data;
+  const {
+    total_faces,
+    emotions_count,
+    emotions_percentage,
+    period,
+    start_date,
+    end_date,
+  } = data;
 
   // Hiển thị tóm tắt với biểu đồ tròn
-  let dateRangeText = '';
+  let dateRangeText = "";
   if (period === "custom" && start_date && end_date) {
     dateRangeText = `<p class="text-sm text-gray-500 mb-2">Từ ${start_date} đến ${end_date}</p>`;
   }
@@ -22,7 +30,7 @@ export function updateStatistics(data) {
   `;
 
   // Lấy context của canvas biểu đồ tròn
-  const pieCtx = document.getElementById('emotionsPieChart').getContext('2d');
+  const pieCtx = document.getElementById("emotionsPieChart").getContext("2d");
 
   // Hủy biểu đồ tròn cũ nếu có
   if (pieChart) {
@@ -31,54 +39,56 @@ export function updateStatistics(data) {
 
   // Vẽ biểu đồ tròn
   pieChart = new window.Chart(pieCtx, {
-    type: 'pie',
+    type: "pie",
     data: {
       labels: Object.keys(emotions_percentage),
-      datasets: [{
-        label: 'Phần trăm',
-        data: Object.values(emotions_percentage),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',  // Angry
-          'rgba(54, 162, 235, 0.6)',  // Disgust
-          'rgba(255, 206, 86, 0.6)',  // Fear
-          'rgba(75, 192, 192, 0.6)',  // Happy
-          'rgba(153, 102, 255, 0.6)', // Neutral
-          'rgba(255, 159, 64, 0.6)',  // Sad
-          'rgba(199, 199, 199, 0.6)', // Surprise
-        ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-          'rgba(255, 159, 64, 1)',
-          'rgba(199, 199, 199, 1)',
-        ],
-        borderWidth: 1
-      }]
+      datasets: [
+        {
+          label: "Phần trăm",
+          data: Object.values(emotions_percentage),
+          backgroundColor: [
+            "rgba(255, 99, 132, 0.6)", // Angry
+            "rgba(54, 162, 235, 0.6)", // Disgust
+            "rgba(255, 206, 86, 0.6)", // Fear
+            "rgba(75, 192, 192, 0.6)", // Happy
+            "rgba(153, 102, 255, 0.6)", // Neutral
+            "rgba(255, 159, 64, 0.6)", // Sad
+            "rgba(199, 199, 199, 0.6)", // Surprise
+          ],
+          borderColor: [
+            "rgba(255, 99, 132, 1)",
+            "rgba(54, 162, 235, 1)",
+            "rgba(255, 206, 86, 1)",
+            "rgba(75, 192, 192, 1)",
+            "rgba(153, 102, 255, 1)",
+            "rgba(255, 159, 64, 1)",
+            "rgba(199, 199, 199, 1)",
+          ],
+          borderWidth: 1,
+        },
+      ],
     },
     options: {
       responsive: true,
       plugins: {
         legend: {
-          position: 'top',
+          position: "top",
         },
         title: {
           display: true,
-          text: 'Phần trăm cảm xúc'
+          text: "Phần trăm cảm xúc",
         },
         tooltip: {
           callbacks: {
-            label: function(context) {
-              const label = context.label || '';
+            label: function (context) {
+              const label = context.label || "";
               const value = context.raw || 0;
               return `${label}: ${value}%`;
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   });
 
   // Hủy biểu đồ cột cũ nếu có
@@ -162,10 +172,12 @@ export function displayStatistics() {
   periodFilter.addEventListener("change", () => {
     if (periodFilter.value === "custom") {
       customDateFilter.classList.remove("hidden");
-      fetchStatistics(); // Làm mới dữ liệu ngay khi chọn "Tùy chỉnh"
+      fetchStatistics();
+      refreshHistory();
     } else {
       customDateFilter.classList.add("hidden");
-      fetchStatistics(); // Làm mới dữ liệu ngay khi thay đổi bộ lọc
+      fetchStatistics();
+      refreshHistory();
     }
   });
 
@@ -180,7 +192,10 @@ export function displayStatistics() {
       const endDate = endDateInput.value;
 
       if (!startDate || !endDate) {
-        showNotification("Vui lòng chọn cả ngày bắt đầu và ngày kết thúc", "error");
+        showNotification(
+          "Vui lòng chọn cả ngày bắt đầu và ngày kết thúc",
+          "error"
+        );
         return;
       }
 
@@ -188,7 +203,10 @@ export function displayStatistics() {
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (start > end) {
-        showNotification("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc", "error");
+        showNotification(
+          "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc",
+          "error"
+        );
         return;
       }
 
@@ -198,27 +216,36 @@ export function displayStatistics() {
     }
 
     refreshButton.disabled = true;
-    refreshButton.innerHTML = 'Đang tải...';
+    refreshButton.innerHTML = "Đang tải...";
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Không thể lấy dữ liệu thống kê');
+        throw new Error("Không thể lấy dữ liệu thống kê");
       }
       const data = await response.json();
       updateStatistics(data);
     } catch (error) {
-      console.error('Lỗi khi lấy dữ liệu thống kê:', error);
-      showNotification('Đã xảy ra lỗi khi lấy dữ liệu thống kê', 'error');
+      console.error("Lỗi khi lấy dữ liệu thống kê:", error);
+      showNotification("Đã xảy ra lỗi khi lấy dữ liệu thống kê", "error");
     } finally {
       refreshButton.disabled = false;
-      refreshButton.innerHTML = 'Làm mới';
+      refreshButton.innerHTML = "Làm mới";
     }
   }
 
   // Làm mới dữ liệu khi nhấn nút "Làm mới"
-  refreshButton.addEventListener("click", fetchStatistics);
+  refreshButton.addEventListener("click", () => {
+    fetchStatistics();
+    refreshHistory();
+  });
 
   // Tự động làm mới dữ liệu khi thay đổi ngày
-  startDateInput.addEventListener("change", fetchStatistics);
-  endDateInput.addEventListener("change", fetchStatistics);
+  startDateInput.addEventListener("change", () => {
+    fetchStatistics();
+    refreshHistory();
+  });
+  endDateInput.addEventListener("change", () => {
+    fetchStatistics();
+    refreshHistory();
+  });
 }

@@ -1,5 +1,5 @@
 import { loadHistoryFromAPI, loadStatisticsFromAPI } from './api.js';
-import { updateHistoryGrid } from './history.js';
+import { refreshHistory, updateHistoryGrid } from './history.js';
 import { updateStatistics } from './statistics.js';
 
 export function initApp() {
@@ -7,7 +7,6 @@ export function initApp() {
   loadHistoryFromAPI()
     .then((history) => {
       window.detectionHistory = history;
-      console.log('Đã tải lịch sử từ API:', window.detectionHistory.length, 'mục');
       updateHistoryGrid();
     })
     .catch((error) => {
@@ -20,7 +19,6 @@ export function initApp() {
   loadStatisticsFromAPI()
     .then((statistics) => {
       window.detectionStatistics = statistics;
-      console.log('Đã tải thống kê từ API:', window.detectionStatistics);
       updateStatistics(statistics);
     })
     .catch((error) => {
@@ -48,5 +46,6 @@ export function initApp() {
         period: 'week'
       };
       updateStatistics(window.detectionStatistics);
+      refreshHistory();
     });
 }

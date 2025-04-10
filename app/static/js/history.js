@@ -136,3 +136,46 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notification.remove(), 300);
   }, 3000);
 }
+
+// Hàm làm mới lịch sử dựa trên bộ lọc thời gian
+export async function refreshHistory() {
+  const periodFilter = document.getElementById("periodFilter");
+  const startDateInput = document.getElementById("startDate");
+  const endDateInput = document.getElementById("endDate");
+  const period = periodFilter.value;
+
+  let url = "/face-expression/history";
+  if (period === "custom") {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+
+    if (!startDate || !endDate) {
+      showNotification("Vui lòng chọn cả ngày bắt đầu và ngày kết thúc", "error");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) {
+      showNotification("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc", "error");
+      return;
+    }
+
+    url += `?period=custom&start_date=${startDate}&end_date=${endDate}`;
+  } else {
+    url += `?period=${period}`;
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Không thể lấy dữ liệu lịch sử');
+    }
+    const history = await response.json();
+    window.detectionHistory = history;
+    updateHistoryGrid(history);
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu lịch sử:', error);
+    showNotification('Đã xảy ra lỗi khi lấy dữ liệu lịch sử', 'error');
+  }
+}

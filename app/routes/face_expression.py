@@ -164,11 +164,41 @@ async def predict(face_input: FaceExpressionInput = Depends()):
         content=face_expression_output.model_dump(),
     )
 
-# Endpoint lấy toàn bộ lịch sử
+# Endpoint để lấy lịch sử
 @router.get("/history")
-async def get_history():
+async def get_history(period: str = "all", start_date: str = None, end_date: str = None):
+    """
+    Lấy dữ liệu lịch sử theo khoảng thời gian.
+    - period: "week" (tuần), "month" (tháng), "year" (năm), "all" (tất cả), hoặc "custom" (tùy chỉnh).
+    - start_date: Ngày bắt đầu (định dạng YYYY-MM-DD, chỉ áp dụng khi period=custom).
+    - end_date: Ngày kết thúc (định dạng YYYY-MM-DD, chỉ áp dụng khi period=custom).
+    """
     cursor = conn.cursor()
-    cursor.execute("SELECT timestamp, image, expressions FROM detection_history ORDER BY timestamp DESC")
+
+    # Xác định khoảng thời gian
+    now = datetime.now()
+    if period == "custom" and start_date and end_date:
+        try:
+            start_time = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp() * 1000)
+            end_time = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp() * 1000) + 86399999  # Cuối ngày
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Định dạng ngày không hợp lệ. Sử dụng YYYY-MM-DD.")
+    else:
+        if period == "week":
+            start_time = int((now - timedelta(days=7)).timestamp() * 1000)
+        elif period == "month":
+            start_time = int((now - timedelta(days=30)).timestamp() * 1000)
+        elif period == "year":
+            start_time = int((now - timedelta(days=365)).timestamp() * 1000)
+        else:  # "all"
+            start_time = 0
+        end_time = int(now.timestamp() * 1000)
+
+    # Lấy dữ liệu từ database
+    cursor.execute(
+        "SELECT timestamp, image, expressions FROM detection_history WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC",
+        (start_time, end_time)
+    )
     rows = cursor.fetchall()
     history = []
     for row in rows:
